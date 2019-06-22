@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>320</width>
-    <height>368</height>
+    <width>379</width>
+    <height>432</height>
    </rect>
   </property>
   <property name="font">
@@ -20,51 +20,103 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="Label_DestIP">
-       <property name="text">
-        <string>目的IP(&amp;I)：</string>
-       </property>
-       <property name="buddy">
-        <cstring>LineEdit_DestIP</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="LineEdit_DestIP"/>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="Label_DestPort">
-       <property name="text">
-        <string>目的端口(&amp;P)：</string>
-       </property>
-       <property name="buddy">
-        <cstring>LineEdit_DestPort</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QLineEdit" name="LineEdit_DestPort"/>
-       </item>
-       <item>
-        <widget class="QPushButton" name="Button_Connect">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>连接</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>客户端</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="Label_DestIP">
+        <property name="text">
+         <string>目的IP(&amp;I)：</string>
+        </property>
+        <property name="buddy">
+         <cstring>LineEdit_DestIP</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="LineEdit_DestIP"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="Label_DestPort">
+        <property name="text">
+         <string>目的端口(&amp;P)：</string>
+        </property>
+        <property name="buddy">
+         <cstring>LineEdit_DestPort</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLineEdit" name="LineEdit_DestPort"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="Button_Connect">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>连接</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="List_Text"/>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>服务器</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="Label_SrcIP">
+        <property name="text">
+         <string>本机IP：</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="LineEdit_SrcIP">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="Local_SrcPort">
+        <property name="text">
+         <string>本机端口(&amp;S)：</string>
+        </property>
+        <property name="buddy">
+         <cstring>LineEdit_SrcPort</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLineEdit" name="LineEdit_SrcPort"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="Button_Listen">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>监听</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <widget class="Line" name="line">
@@ -74,49 +126,14 @@
     </widget>
    </item>
    <item>
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0">
-      <widget class="QLabel" name="Label_SrcIP">
-       <property name="text">
-        <string>本机IP：</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="LineEdit_SrcIP">
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="Local_SrcPort">
-       <property name="text">
-        <string>本机端口(&amp;S)：</string>
-       </property>
-       <property name="buddy">
-        <cstring>LineEdit_SrcPort</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLineEdit" name="LineEdit_SrcPort"/>
-       </item>
-       <item>
-        <widget class="QPushButton" name="Button_Listen">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>监听</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
+    <widget class="QLabel" name="Label_Status">
+     <property name="text">
+      <string>当前状态: 无</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListWidget" name="List_Text"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -179,12 +196,21 @@
   <zorder>Button_Connect</zorder>
   <zorder>Button_Listen</zorder>
   <zorder>LineEdit_SrcPort</zorder>
+  <zorder>groupBox</zorder>
+  <zorder>groupBox_2</zorder>
+  <zorder>Label_Status</zorder>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <tabstops>
   <tabstop>LineEdit_DestIP</tabstop>
-  <tabstop>List_Text</tabstop>
+  <tabstop>LineEdit_DestPort</tabstop>
+  <tabstop>Button_Connect</tabstop>
   <tabstop>LineEdit_SrcIP</tabstop>
+  <tabstop>LineEdit_SrcPort</tabstop>
+  <tabstop>Button_Listen</tabstop>
+  <tabstop>List_Text</tabstop>
+  <tabstop>LineEdit_SendMsg</tabstop>
+  <tabstop>Button_SendMsg</tabstop>
   <tabstop>Button_Close</tabstop>
  </tabstops>
  <resources>
@@ -198,8 +224,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>230</x>
-     <y>384</y>
+     <x>335</x>
+     <y>407</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>

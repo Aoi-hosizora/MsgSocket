@@ -12,6 +12,9 @@
 #pragma execution_character_set("utf-8")  
 #endif
 
+class ClientServer;
+class ServerSocket;
+
 class PCMsgSocketDialog : public QDialog {
 	Q_OBJECT
 
@@ -25,6 +28,7 @@ private slots:
 	void Button_SendMsg_Clicked();
 
 	void LineEdit_TextChanged();
+	void SocketStatus_StatusChange(SocketStatus::Status);
 
 	void TCPSocket_ConnectedFromServer();
 	void TCPSocket_DisconnectedByServer();
@@ -34,32 +38,19 @@ private slots:
 private:
 	Ui::PCMsgSocketDialog ui;
 	SocketStatus nowStatus;
-	QTcpSocket *tcpSocket;
+	QTcpSocket *clientSocket;
+	ClientServer *serverSocketHandler;
 
 	void setupUIData();
 	void setupConnect();
+
+	void appendSent(QString msg);
+	void appendRcvd(QString msg);
 };
 
 #endif // PCMSGSOCKETDIALOG_H
 
-
-#ifndef CLIENTSOCKET_H
-#define CLIENTSOCKET_H
-
-#include <QtNetwork/QTcpSocket>
-
-class ClientSocket : public QTcpSocket {
-	Q_OBJECT
-
-public:
-	ClientSocket(QObject *parent = nullptr);
-
-private slots:
-	void readClient();
-
-};
-
-#endif // CLIENTSOCKET_H
+//////////////////////////////////////////////////////////////////////////
 
 #ifndef CLIENTSERVER_H
 #define CLIENTSERVER_H
@@ -68,10 +59,42 @@ class ClientServer : public QTcpServer {
 	Q_OBJECT
 
 public:
-	ClientServer(QObject *parent = nullptr);
+	ClientServer(PCMsgSocketDialog* pCMsgSocketDialog, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent = nullptr) 
+		: pCMsgSocketDialog(pCMsgSocketDialog), appendRcvd(appendRcvd), appendSent(appendSent) {}
+	ServerSocket *serversocket;
+	void sendMsg(QString msg);
 
 private:
-	void incomingConnection(int);
+	void incomingConnection(int) override;
+
+	PCMsgSocketDialog* pCMsgSocketDialog;
+	void (PCMsgSocketDialog::*appendSent)(QString);
+	void (PCMsgSocketDialog::*appendRcvd)(QString);
 };
 
 #endif // CLIENTSERVER_H
+
+//////////////////////////////////////////////////////////////////////////
+
+#ifndef CLIENTSOCKET_H
+#define CLIENTSOCKET_H
+
+#include <QtNetwork/QTcpSocket>
+
+class ServerSocket : public QTcpSocket {
+	Q_OBJECT
+
+public:
+	ServerSocket(PCMsgSocketDialog*, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent = nullptr);
+	void sendMsg(QString msg);
+private slots:
+	void readClient();
+
+private:
+	PCMsgSocketDialog* pCMsgSocketDialog;
+	void (PCMsgSocketDialog::*appendSent)(QString);
+	void (PCMsgSocketDialog::*appendRcvd)(QString);
+
+};
+
+#endif // CLIENTSOCKET_H

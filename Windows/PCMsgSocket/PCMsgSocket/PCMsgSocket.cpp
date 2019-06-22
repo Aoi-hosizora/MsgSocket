@@ -10,9 +10,17 @@ using namespace std;
 #include <QtNetwork/QHostInfo>
 #include <QtCore/QMetaEnum>
 
+#ifdef WIN32  
+#pragma execution_character_set("utf-8")  
+#endif
+
 PCMsgSocketDialog::PCMsgSocketDialog(QWidget *parent) : QDialog(parent) {
 	setupUIData();
 	setupConnect();
+}
+
+PCMsgSocketDialog::~PCMsgSocketDialog() {
+	clientSocket->close();
 }
 
 void PCMsgSocketDialog::setupUIData() {
@@ -23,7 +31,8 @@ void PCMsgSocketDialog::setupUIData() {
 		| Qt::WindowMinimizeButtonHint 
 		| Qt::WindowStaysOnTopHint);
 
-	tcpSocket = new QTcpSocket(this);
+	clientSocket = new QTcpSocket(this);
+	serverSocketHandler = new ClientServer(this, &PCMsgSocketDialog::appendSent, &PCMsgSocketDialog::appendRcvd, this);
 
 	nowStatus = SocketStatus::notConnect;
 
@@ -42,104 +51,177 @@ void PCMsgSocketDialog::setupConnect() {
 	connect(ui.LineEdit_DestPort, SIGNAL(textChanged(QString)), this, SLOT(LineEdit_TextChanged()));
 	connect(ui.LineEdit_SrcPort, SIGNAL(textChanged(QString)), this, SLOT(LineEdit_TextChanged()));
 	
-	connect(tcpSocket, SIGNAL(connected()), this, SLOT(TCPSocket_ConnectedFromServer()));
-	connect(tcpSocket, SIGNAL(disconnected()), this, SLOT(TCPSocket_DisconnectedByServer()));
-	connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(TCPSocket_ErrorFromServer(QAbstractSocket::SocketError)));
-	connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(TCPSocket_ReadyRead()));
+	connect(clientSocket, SIGNAL(connected()), this, SLOT(TCPSocket_ConnectedFromServer()));
+	connect(clientSocket, SIGNAL(disconnected()), this, SLOT(TCPSocket_DisconnectedByServer()));
+	connect(clientSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(TCPSocket_ErrorFromServer(QAbstractSocket::SocketError)));
+	connect(clientSocket, SIGNAL(readyRead()), this, SLOT(TCPSocket_ReadyRead()));
+
+	connect(&nowStatus, SIGNAL(statusChange(SocketStatus::Status)), this, SLOT(SocketStatus_StatusChange(SocketStatus::Status)));
 }
 
-PCMsgSocketDialog::~PCMsgSocketDialog() {
-	tcpSocket->close();
+// 判断各种有效性
+void PCMsgSocketDialog::LineEdit_TextChanged() {
+	if (nowStatus == SocketStatus::notConnect) {
+		ui.Button_Connect->setEnabled(!ui.LineEdit_DestIP->text().isEmpty() &&
+			!ui.LineEdit_DestPort->text().isEmpty());
+
+		ui.Button_Listen->setEnabled(!ui.LineEdit_SrcPort->text().isEmpty());
+	}
+
+	ui.Button_SendMsg->setEnabled(!ui.LineEdit_SendMsg->text().isEmpty());
 }
+
+// 根据是客户端还是服务器判断操作
+void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus) {
+	QString statusStr = QMetaEnum::fromType<SocketStatus::Status>().valueToKey(newStatus);
+	qDebug() << "SocketStatus: Now is" << statusStr;
+	switch (newStatus) {
+	case SocketStatus::asClient:
+		ui.Label_Status->setText(QString("当前状态(客户端): 连接至服务器 %0:%1 中...").arg(ui.LineEdit_DestIP->text()).arg(ui.LineEdit_DestPort->text().toInt()));
+		ui.LineEdit_DestIP->setReadOnly(true);
+		ui.LineEdit_DestPort->setReadOnly(true);
+		ui.LineEdit_SrcIP->setEnabled(false);
+		ui.LineEdit_SrcPort->setEnabled(false);
+		ui.Button_Listen->setEnabled(false);
+		ui.Button_Connect->setEnabled(false);
+	break;
+	case SocketStatus::asServer:
+		ui.Label_Status->setText(QString("当前状态(服务器): 监听本地端口 %0 中...").arg(ui.LineEdit_SrcPort->text().toInt()));
+		ui.LineEdit_SrcIP->setReadOnly(true);
+		ui.LineEdit_SrcPort->setReadOnly(true);
+		ui.LineEdit_DestIP->setEnabled(false);
+		ui.LineEdit_DestPort->setEnabled(false);
+		ui.Button_Connect->setEnabled(false);
+		ui.Button_Listen->setEnabled(false);
+	break;
+	case SocketStatus::notConnect:
+		ui.Label_Status->setText("当前状态: 无");
+		ui.LineEdit_DestIP->setReadOnly(false);
+		ui.LineEdit_DestIP->setEnabled(true);
+		ui.LineEdit_DestPort->setReadOnly(false);
+		ui.LineEdit_DestPort->setEnabled(true);
+		ui.LineEdit_SrcIP->setEnabled(true);
+		ui.LineEdit_SrcPort->setReadOnly(false);
+		ui.LineEdit_SrcPort->setEnabled(true);
+		LineEdit_TextChanged();
+	break;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
 
 #pragma region ClientSocket
 
 // 请求连接
 void PCMsgSocketDialog::Button_Connect_Clicked() {
-	qDebug() << "Button_Connect_Clicked():" << "connectToHost";
-	tcpSocket->connectToHost(QHostAddress::LocalHost, ui.LineEdit_DestPort->text().toInt());
+	ui.Label_Status->setText(QString("当前状态(客户端): 连接至 %0:%1 中...").arg(ui.LineEdit_DestIP->text()).arg(ui.LineEdit_DestPort->text().toInt()));
+	clientSocket->connectToHost(QHostAddress::LocalHost, ui.LineEdit_DestPort->text().toInt());
 }
 
 // 服务器连接成功返回信息
 void PCMsgSocketDialog::TCPSocket_ConnectedFromServer() {
-	nowStatus = SocketStatus::isClient;
-	QMessageBox::information(this, "Connect", "Connect Success");
+	nowStatus = SocketStatus::asClient;
+	// QMessageBox::information(this, "连接", "与服务器连接成功。");
 }
 
 // 服务器主动断开连接
 void PCMsgSocketDialog::TCPSocket_DisconnectedByServer() {
 	nowStatus = SocketStatus::notConnect;
-	QMessageBox::information(this, "Connect", "Disconnected");
+	QMessageBox::information(this, "连接", "与服务器连接断开。");
 }
 
 // 从服务器端收到的错误信息
 void PCMsgSocketDialog::TCPSocket_ErrorFromServer(QAbstractSocket::SocketError err) {
-	qDebug() << "TCPSocket_ErrorFromServer():" << err;
-	QString errStr = QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err);
-	QMessageBox::critical(this, "Connect", "连接失败: " + errStr);
+	if (err != QAbstractSocket::RemoteHostClosedError) {
+		QString errStr = QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err);
+		nowStatus = SocketStatus::notConnect;
+		QMessageBox::critical(this, "连接", QString("连接失败: %0。").arg(errStr));
+	}
 }
 
 // 从服务器端收到正常信息
 void PCMsgSocketDialog::TCPSocket_ReadyRead() {
-	QDataStream in(tcpSocket);
+	QDataStream in(clientSocket);
 	in.setVersion(Consts::Qt_Version);
 
-	if (tcpSocket->bytesAvailable() == 0)
+	if (clientSocket->bytesAvailable() == 0)
 		return;
 
 	QString rcvdStr;
 	in >> rcvdStr;
-	qDebug() << "TCPSocket_ReadyRead():" << rcvdStr;
+	qDebug() << "客户端接收" << rcvdStr;
+
+	appendRcvd(rcvdStr);
 }
 
-// 发信息给服务器
+// 发信息给服务器/服务器
 void PCMsgSocketDialog::Button_SendMsg_Clicked() {
 	if (nowStatus == SocketStatus::notConnect)
 		return;
 
-	QByteArray block;
-	QDataStream out(&block, QIODevice::WriteOnly);
-	out.setVersion(Consts::Qt_Version);
-	
 	QString sentStr = ui.LineEdit_SendMsg->text();
 	if (sentStr.isEmpty())
 		return;
 
-	qDebug() << "Button_SendMsg_Clicked():" << sentStr;
-	out << sentStr;
-	tcpSocket->write(block);
+	if (nowStatus == SocketStatus::asClient) {
+		QByteArray block;
+		QDataStream out(&block, QIODevice::WriteOnly);
+		out.setVersion(Consts::Qt_Version);
+
+		
+		out << sentStr;
+
+		qDebug() << "客户端发送" << sentStr;
+		clientSocket->write(block);
+
+		appendSent(sentStr);
+	}
+	else {
+		// nowStatus == SocketStatus::asServer
+		serverSocketHandler->sendMsg(sentStr);
+	}
 }
 
 #pragma endregion ClientSocket
 
+//////////////////////////////////////////////////////////////////////////
+
 #pragma region ServerSocket
 
+// 监听端口，作为服务器
 void PCMsgSocketDialog::Button_Listen_Clicked() {
-	static ClientServer server;
-	if (!server.listen(QHostAddress::Any, ui.LineEdit_SrcPort->text().toInt()))
-		qDebug() << "Button_Listen_Clicked():" << "Error for listen port";
-	else 
-		qDebug() << "Button_Listen_Clicked():" << "Listening port:" << ui.LineEdit_SrcPort->text().toInt();
+	// static ClientServer serverSocketHandler;
+	QString port = ui.LineEdit_SrcPort->text();
+	if (!serverSocketHandler->listen(QHostAddress::Any, port.toInt())) {
+		QString errStr = QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(serverSocketHandler->serverError());
+		QMessageBox::critical(this, "监听", QString("端口 %0 监听失败：%1。").arg(port).arg(errStr));
+	}
+	else {
+		nowStatus = SocketStatus::asServer;
+	}
 }
 
-#pragma endregion ServerSocket
-
-void PCMsgSocketDialog::LineEdit_TextChanged() {
-	ui.Button_Connect->setEnabled(!ui.LineEdit_DestIP->text().isEmpty() &&
-								  !ui.LineEdit_DestPort->text().isEmpty());
-
-	ui.Button_SendMsg->setEnabled(!ui.LineEdit_SendMsg->text().isEmpty());
-
-	ui.Button_Listen->setEnabled(!ui.LineEdit_SrcPort->text().isEmpty());
+// 接收到对端口的请求连接
+void ClientServer::incomingConnection(int socketId) {
+	serversocket = new ServerSocket(pCMsgSocketDialog, appendSent, appendRcvd, this);
+	serversocket->setSocketDescriptor(socketId);
 }
 
-ClientSocket::ClientSocket(QObject *parent) : QTcpSocket(parent) {
+void ClientServer::sendMsg(QString msg) {
+	serversocket->sendMsg(msg);
+}
+
+ServerSocket::ServerSocket(PCMsgSocketDialog* pCMsgSocketDialog, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent) 
+	: QTcpSocket(parent) {
 	connect(this, SIGNAL(readyRead()), this, SLOT(readClient()));
 	connect(this, SIGNAL(disconnected()), this, SLOT(deleteLater()));
+	this->appendSent = appendSent;
+	this->appendRcvd = appendRcvd;
+	this->pCMsgSocketDialog = pCMsgSocketDialog;
 }
 
-// 从客户端读取数据
-void ClientSocket::readClient() {
+// 从客户端收到数据
+void ServerSocket::readClient() {
 	QDataStream in(this);
 	in.setVersion(Consts::Qt_Version);
 
@@ -148,14 +230,31 @@ void ClientSocket::readClient() {
 
 	QString rcvdStr;
 	in >> rcvdStr;
-	qDebug() << "readClient():" << rcvdStr;
+	qDebug() << "服务器收到" << rcvdStr;
+	(pCMsgSocketDialog->*appendRcvd)(rcvdStr);
 }
 
-ClientServer::ClientServer(QObject *parent) {
+// 向客户端发送数据
+void ServerSocket::sendMsg(QString msg) {
+	QByteArray block;
+	QDataStream out(&block, QIODevice::WriteOnly);
+	out.setVersion(Consts::Qt_Version);
 
+	out << msg;
+
+	qDebug() << "服务器发送" << msg;
+	write(block); // ServerSocket
+	(pCMsgSocketDialog->*appendSent)(msg);
 }
 
-void ClientServer::incomingConnection(int socketId) {
-	ClientSocket *socket = new ClientSocket(this);
-	socket->setSocketDescriptor(socketId);
+#pragma endregion ServerSocket
+
+// 本机发送
+void PCMsgSocketDialog::appendSent(QString msg) {
+	ui.List_Text->addItem(QString("< %0").arg(msg));
+}
+
+// 本机接收
+void PCMsgSocketDialog::appendRcvd(QString msg) {
+	ui.List_Text->addItem(QString("> %0").arg(msg));
 }
