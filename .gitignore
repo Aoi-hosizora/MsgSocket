@@ -1,0 +1,14 @@
+ipch/
+
+# MSVC Qt
+Win32/
+Debug/
+Release/
+GeneratedFiles/
+
+*.sdf
+*.suo
+*.user
+
+# Cordova
+node_modules/
