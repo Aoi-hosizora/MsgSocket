@@ -139,7 +139,7 @@ void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus
 
 // 请求连接
 void PCMsgSocketDialog::Button_Connect_Clicked() {
-	ui.Label_Status->setText(QString("当前状态(客户端): 连接至 %0:%1 中...").arg(ui.LineEdit_DestIP->text()).arg(ui.LineEdit_DestPort->text().toInt()));
+	ui.Label_Status->setText(QString("当前状态(客户端): 正在连接至 %0:%1 中...").arg(ui.LineEdit_DestIP->text()).arg(ui.LineEdit_DestPort->text().toInt()));
 	// QHostAddress::LocalHost
 	clientSocket->connectToHost(ui.LineEdit_DestIP->text(), ui.LineEdit_DestPort->text().toInt());
 }

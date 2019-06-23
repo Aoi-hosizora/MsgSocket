@@ -5,9 +5,10 @@
 TEMPLATE = app
 TARGET = PCMsgSocket
 INCLUDEPATH += .
+QT += CORE WIDGETS NETWORK GUI
 
 # Input
-HEADERS += Consts.h PCMsgSocket.h GeneratedFiles/ui_PCMsgSocket.h
+HEADERS += Consts.h PCMsgSocket.h
 FORMS += PCMsgSocket.ui
-SOURCES += main.cpp PCMsgSocket.cpp GeneratedFiles/qrc_PCMsgSocket.cpp
+SOURCES += main.cpp PCMsgSocket.cpp
 RESOURCES += PCMsgSocket.qrc
