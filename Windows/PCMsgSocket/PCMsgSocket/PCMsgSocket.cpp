@@ -9,6 +9,7 @@ using namespace std;
 #include <QtNetwork/QAbstractSocket>
 #include <QtNetwork/QHostInfo>
 #include <QtCore/QMetaEnum>
+#include <QtCore/QDateTime>
 
 #ifdef WIN32  
 #pragma execution_character_set("utf-8")  
@@ -39,12 +40,15 @@ void PCMsgSocketDialog::setupUIData() {
 	QString srcip = QHostInfo::fromName(QHostInfo::localHostName()).addresses().last().toString();
 	ui.LineEdit_SrcIP->setText(srcip);
 	ui.LineEdit_DestIP->setText("127.0.0.1");
+	ui.LineEdit_DestIP->setValidator(new QRegExpValidator(*new QRegExp("((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])[\\.]){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])"), this));
 }
 
 void PCMsgSocketDialog::setupConnect() {
 	connect(ui.Button_Connect, SIGNAL(clicked()), this, SLOT(Button_Connect_Clicked()));
 	connect(ui.Button_Listen, SIGNAL(clicked()), this, SLOT(Button_Listen_Clicked()));
 	connect(ui.Button_SendMsg, SIGNAL(clicked()), this, SLOT(Button_SendMsg_Clicked()));
+	connect(ui.Button_DisConnect, SIGNAL(clicked()), this, SLOT(Button_DisConnect_Clicked()));
+	connect(ui.Button_DisListen, SIGNAL(clicked()), this, SLOT(Button_DisListen_Clicked()));
 
 	connect(ui.LineEdit_SendMsg, SIGNAL(textChanged(QString)), this, SLOT(LineEdit_TextChanged()));
 	connect(ui.LineEdit_DestIP, SIGNAL(textChanged(QString)), this, SLOT(LineEdit_TextChanged()));
@@ -55,6 +59,8 @@ void PCMsgSocketDialog::setupConnect() {
 	connect(clientSocket, SIGNAL(disconnected()), this, SLOT(TCPSocket_DisconnectedByServer()));
 	connect(clientSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(TCPSocket_ErrorFromServer(QAbstractSocket::SocketError)));
 	connect(clientSocket, SIGNAL(readyRead()), this, SLOT(TCPSocket_ReadyRead()));
+
+	connect(ui.List_Text, SIGNAL(itemSelectionChanged()), this, SLOT(List_Text_SelectionChanged()));
 
 	connect(&nowStatus, SIGNAL(statusChange(SocketStatus::Status)), this, SLOT(SocketStatus_StatusChange(SocketStatus::Status)));
 }
@@ -71,6 +77,21 @@ void PCMsgSocketDialog::LineEdit_TextChanged() {
 	ui.Button_SendMsg->setEnabled(!ui.LineEdit_SendMsg->text().isEmpty());
 }
 
+void PCMsgSocketDialog::Button_DisConnect_Clicked() {
+	clientSocket->close();
+	nowStatus = SocketStatus::notConnect;
+}
+
+void PCMsgSocketDialog::Button_DisListen_Clicked() {
+	serverSocketHandler->disconnect();
+	nowStatus = SocketStatus::notConnect;
+}
+
+void PCMsgSocketDialog::List_Text_SelectionChanged() {
+	QString currLine = ui.List_Text->selectedItems().at(0)->data(0).toString();
+	ui.LineEdit_SendMsg->setText(currLine.mid(2, currLine.length() - 11 - 2)); // < 34 (07:48:37)
+}
+
 // 根据是客户端还是服务器判断操作
 void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus) {
 	QString statusStr = QMetaEnum::fromType<SocketStatus::Status>().valueToKey(newStatus);
@@ -84,6 +105,7 @@ void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus
 		ui.LineEdit_SrcPort->setEnabled(false);
 		ui.Button_Listen->setEnabled(false);
 		ui.Button_Connect->setEnabled(false);
+		ui.Button_DisConnect->setEnabled(true);
 	break;
 	case SocketStatus::asServer:
 		ui.Label_Status->setText(QString("当前状态(服务器): 监听本地端口 %0 中...").arg(ui.LineEdit_SrcPort->text().toInt()));
@@ -93,6 +115,7 @@ void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus
 		ui.LineEdit_DestPort->setEnabled(false);
 		ui.Button_Connect->setEnabled(false);
 		ui.Button_Listen->setEnabled(false);
+		ui.Button_DisListen->setEnabled(true);
 	break;
 	case SocketStatus::notConnect:
 		ui.Label_Status->setText("当前状态: 无");
@@ -103,6 +126,8 @@ void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus
 		ui.LineEdit_SrcIP->setEnabled(true);
 		ui.LineEdit_SrcPort->setReadOnly(false);
 		ui.LineEdit_SrcPort->setEnabled(true);
+		ui.Button_DisConnect->setEnabled(false);
+		ui.Button_DisListen->setEnabled(false);
 		LineEdit_TextChanged();
 	break;
 	}
@@ -115,7 +140,8 @@ void PCMsgSocketDialog::SocketStatus_StatusChange(SocketStatus::Status newStatus
 // 请求连接
 void PCMsgSocketDialog::Button_Connect_Clicked() {
 	ui.Label_Status->setText(QString("当前状态(客户端): 连接至 %0:%1 中...").arg(ui.LineEdit_DestIP->text()).arg(ui.LineEdit_DestPort->text().toInt()));
-	clientSocket->connectToHost(QHostAddress::LocalHost, ui.LineEdit_DestPort->text().toInt());
+	// QHostAddress::LocalHost
+	clientSocket->connectToHost(ui.LineEdit_DestIP->text(), ui.LineEdit_DestPort->text().toInt());
 }
 
 // 服务器连接成功返回信息
@@ -208,16 +234,24 @@ void ClientServer::incomingConnection(int socketId) {
 }
 
 void ClientServer::sendMsg(QString msg) {
-	serversocket->sendMsg(msg);
+	if (serversocket != nullptr)
+		serversocket->sendMsg(msg);
 }
 
-ServerSocket::ServerSocket(PCMsgSocketDialog* pCMsgSocketDialog, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent) 
+void ClientServer::disconnect() {
+	if (serversocket != nullptr)
+		serversocket->disconnect();
+	close();
+}
+
+ServerSocket::ServerSocket(PCMsgSocketDialog *pCMsgSocketDialog, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent) 
 	: QTcpSocket(parent) {
 	connect(this, SIGNAL(readyRead()), this, SLOT(readClient()));
-	connect(this, SIGNAL(disconnected()), this, SLOT(deleteLater()));
+	// connect(this, SIGNAL(disconnected()), this, SLOT(deleteLater())); 
 	this->appendSent = appendSent;
 	this->appendRcvd = appendRcvd;
 	this->pCMsgSocketDialog = pCMsgSocketDialog;
+
 }
 
 // 从客户端收到数据
@@ -236,25 +270,44 @@ void ServerSocket::readClient() {
 
 // 向客户端发送数据
 void ServerSocket::sendMsg(QString msg) {
+	if (state() != QAbstractSocket::ConnectedState)
+		return;
+
+	qDebug() << "sendMsg";
 	QByteArray block;
 	QDataStream out(&block, QIODevice::WriteOnly);
 	out.setVersion(Consts::Qt_Version);
-
 	out << msg;
 
 	qDebug() << "服务器发送" << msg;
+	
 	write(block); // ServerSocket
 	(pCMsgSocketDialog->*appendSent)(msg);
+}
+
+void ServerSocket::disconnect() {
+	if (state() != QAbstractSocket::ConnectedState)
+		return;
+
+	close();
 }
 
 #pragma endregion ServerSocket
 
 // 本机发送
 void PCMsgSocketDialog::appendSent(QString msg) {
-	ui.List_Text->addItem(QString("< %0").arg(msg));
+	QString now = QDateTime::currentDateTime().toString("hh:mm:ss");
+	QListWidgetItem *item = new QListWidgetItem(QString("< %0 (%1)").arg(msg).arg(now));
+	item->setTextAlignment(Qt::AlignLeft);
+	ui.List_Text->addItem(item);
+	ui.List_Text->scrollToBottom();
 }
 
 // 本机接收
 void PCMsgSocketDialog::appendRcvd(QString msg) {
-	ui.List_Text->addItem(QString("> %0").arg(msg));
+	QString now = QDateTime::currentDateTime().toString("hh:mm:ss");
+	QListWidgetItem *item = new QListWidgetItem(QString("> %0 (%1)").arg(msg).arg(now));
+	item->setTextAlignment(Qt::AlignRight);
+	ui.List_Text->addItem(item);
+	ui.List_Text->scrollToBottom();
 }

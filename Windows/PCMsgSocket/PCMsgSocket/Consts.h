@@ -14,7 +14,7 @@ class SocketStatus : public QObject {
 
 public:
 	enum Status {
-		notConnect = 0, asClient, asServer, ServerGetClient
+		notConnect = 0, asClient, asServer
 	};
 	Q_ENUM(Status)
 

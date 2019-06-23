@@ -1,4 +1,5 @@
 ipch/
+.vscode/
 
 # MSVC Qt
 Win32/
@@ -12,3 +13,6 @@ GeneratedFiles/
 
 # Cordova
 node_modules/
+platforms/
+plugins/
+package-lock.json

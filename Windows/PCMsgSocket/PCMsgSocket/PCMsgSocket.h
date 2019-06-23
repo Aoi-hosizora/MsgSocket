@@ -26,6 +26,8 @@ private slots:
 	void Button_Connect_Clicked();
 	void Button_Listen_Clicked();
 	void Button_SendMsg_Clicked();
+	void Button_DisConnect_Clicked();
+	void Button_DisListen_Clicked();
 
 	void LineEdit_TextChanged();
 	void SocketStatus_StatusChange(SocketStatus::Status);
@@ -34,6 +36,8 @@ private slots:
 	void TCPSocket_DisconnectedByServer();
 	void TCPSocket_ErrorFromServer(QAbstractSocket::SocketError);
 	void TCPSocket_ReadyRead();
+
+	void List_Text_SelectionChanged();
 
 private:
 	Ui::PCMsgSocketDialog ui;
@@ -60,9 +64,10 @@ class ClientServer : public QTcpServer {
 
 public:
 	ClientServer(PCMsgSocketDialog* pCMsgSocketDialog, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent = nullptr) 
-		: pCMsgSocketDialog(pCMsgSocketDialog), appendRcvd(appendRcvd), appendSent(appendSent) {}
+		: pCMsgSocketDialog(pCMsgSocketDialog), appendRcvd(appendRcvd), appendSent(appendSent), serversocket(nullptr) {}
 	ServerSocket *serversocket;
 	void sendMsg(QString msg);
+	void disconnect();
 
 private:
 	void incomingConnection(int) override;
@@ -87,6 +92,8 @@ class ServerSocket : public QTcpSocket {
 public:
 	ServerSocket(PCMsgSocketDialog*, void (PCMsgSocketDialog::*appendSent)(QString), void (PCMsgSocketDialog::*appendRcvd)(QString), QObject *parent = nullptr);
 	void sendMsg(QString msg);
+	void disconnect();
+
 private slots:
 	void readClient();
 
@@ -94,7 +101,6 @@ private:
 	PCMsgSocketDialog* pCMsgSocketDialog;
 	void (PCMsgSocketDialog::*appendSent)(QString);
 	void (PCMsgSocketDialog::*appendRcvd)(QString);
-
 };
 
 #endif // CLIENTSOCKET_H

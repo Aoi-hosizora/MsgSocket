@@ -63,6 +63,16 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="Button_DisConnect">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>断开</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
@@ -110,6 +120,16 @@
           </property>
           <property name="text">
            <string>监听</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="Button_DisListen">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>断开</string>
           </property>
          </widget>
         </item>
