@@ -16,3 +16,21 @@ node_modules/
 platforms/
 plugins/
 package-lock.json
+tmp/
+
+# Vue
+!/Cordova/MsgSocket/app-vue/tests/e2e/plugins/
+tests/e2e/videos/
+tests/e2e/screenshots/
+dist
+
+.DS_Store
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
