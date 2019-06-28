@@ -1,11 +1,11 @@
 import { Component, Vue } from 'vue-property-decorator';
-import HelloWorld from '@/app/components/HelloWorld/HelloWorld.vue';
+import HelloWorld from '@/app/components/HelloWorld/HelloWorld';
 
 @Component({
-  components: {
-    HelloWorld,
-  },
+	components: {
+		HelloWorld,
+	},
 })
 export default class Home extends Vue {
-	
+
 }
